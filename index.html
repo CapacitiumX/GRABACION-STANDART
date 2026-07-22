@@ -119,13 +119,13 @@
         <button class="btn-load" style="margin-top:8px;" onclick="document.getElementById('file-in').click()">📥 SUBIR FOTOS / VIDEOS</button>
         <input type="file" id="file-in" multiple accept="image/*,video/*" style="display:none;" onchange="handleFiles(event)">
         
-        <!-- GUION DE NARRACIÓN IA (TEXTO SOLO PARA AUDIO, INVISIBLE EN FOTOS) -->
-        <div class="section-title">🗣️ GUION DE NARRACIÓN IA (NO APARECE EN LA FOTO)</div>
-        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega aquí el texto que la IA va a narrar para esta foto..." oninput="updateCurrentText()"></textarea>
+        <!-- GUION DE NARRACIÓN IA (CORREGIDO PARA SELECCIONAR TODAS LAS VOCES REALES) -->
+        <div class="section-title">🗣️ GUION DE NARRACIÓN IA (AUDITIVO SOLAMENTE)</div>
+        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega aquí el texto de narración para esta foto..." oninput="updateCurrentText()"></textarea>
         
         <div class="ctrl-row">
-            <span>Seleccionar Voz IA:</span>
-            <select id="tts-voice" class="select-custom"></select>
+            <span>Voz IA:</span>
+            <select id="tts-voice" class="select-custom" onchange="testSelectedVoice()"></select>
         </div>
         <div class="ctrl-row">
             <span>Velocidad:</span>
@@ -150,7 +150,7 @@
 
         <div class="section-title">🖼️ ESTUDIO Y GENERADOR DE MINIATURAS</div>
         <button class="btn-load" style="background:#00ffff; color:black; font-weight:900;" onclick="generateAutoThumbnails()">✨ GENERAR 10 OPCIONES AUTO (IA)</button>
-        <input type="text" id="thumb-text" class="input-text" style="margin-top:4px;" placeholder="Texto para Miniatura de YouTube...">
+        <input type="text" id="thumb-text" class="input-text" style="margin-top:4px;" placeholder="Texto para Miniatura...">
         
         <div class="ctrl-row">
             <span>Color Texto Miniatura:</span>
@@ -207,7 +207,7 @@
             <input type="range" id="arrow-length" min="100" max="400" value="220">
         </div>
 
-        <!-- BARRA DE AVATARES EXPANDIDA A 11 ANIMALES ANIMADOS -->
+        <!-- BARRA DE AVATARES -->
         <div class="section-title">🐾 ELIGE TU AVATAR INTERACTIVO ANIMADO</div>
         <select id="avatar-selector" class="select-custom" onchange="changeAvatar(this.value)">
             <option value="none">👤 Rostro Real (Sin Avatar)</option>
@@ -313,27 +313,28 @@
             <button class="btn-c" onclick="setCamFx('unrealSet')">🎬 85. Unreal Engine Set</button>
         </div>
 
-        <div class="section-title">🎬 20 TRANSICIONES TIPO POWERPOINT</div>
+        <!-- 20 TRANSICIONES POWERPOINT TOTALMENTE PROGRAMADAS Y FUNCIONALES -->
+        <div class="section-title">🎬 20 TRANSICIONES Y ANIMACIONES TIPO POWERPOINT</div>
         <div class="grid-buttons">
-            <button class="btn-c" onclick="setAnimMode('zoom')">🔍 1. Zoom</button>
-            <button class="btn-c" onclick="setAnimMode('slide')">↔️ 2. Cortina</button>
-            <button class="btn-c" onclick="setAnimMode('blinds')">🪟 3. Persiana Horiz.</button>
-            <button class="btn-c" onclick="setAnimMode('flip')">🔄 4. Giro 3D</button>
-            <button class="btn-c" onclick="setAnimMode('fade')">✨ 5. Desvanecer</button>
-            <button class="btn-c" onclick="setAnimMode('pop')">💥 6. Explosión</button>
-            <button class="btn-c" onclick="setAnimMode('drop')">⬇️ 7. Caída</button>
-            <button class="btn-c" onclick="setAnimMode('wipe')">↕️ 8. Barrido Arriba</button>
-            <button class="btn-c" onclick="setAnimMode('spinZoom')">🌀 9. Spin Zoom</button>
-            <button class="btn-c" onclick="setAnimMode('bounce')">⚽ 10. Rebote</button>
-            <button class="btn-c" onclick="setAnimMode('scale')">📐 11. Escalado</button>
-            <button class="btn-c" onclick="setAnimMode('windmill')">🎡 12. Molino</button>
-            <button class="btn-c" onclick="setAnimMode('diagonal')">↗️ 13. Diagonal</button>
-            <button class="btn-c" onclick="setAnimMode('flash')">⚡ 14. Flash</button>
-            <button class="btn-c" onclick="setAnimMode('vBlinds')">🏛️ 15. Persiana Vert.</button>
-            <button class="btn-c" onclick="setAnimMode('reveal')">👁️ 16. Revelar</button>
-            <button class="btn-c" onclick="setAnimMode('rise')">⬆️ 17. Elevar</button>
-            <button class="btn-c" onclick="setAnimMode('swing')">🔔 18. Balanceo</button>
-            <button class="btn-c" onclick="setAnimMode('dBlinds')">📐 19. Persiana Diag.</button>
+            <button class="btn-c" onclick="setAnimMode('zoom')">⭐ 1. Zoom</button>
+            <button class="btn-c" onclick="setAnimMode('slide')">⭐ 2. Cortina / Slide</button>
+            <button class="btn-c" onclick="setAnimMode('blinds')">⭐ 3. Persiana Horiz.</button>
+            <button class="btn-c" onclick="setAnimMode('flip')">⭐ 4. Giro 3D</button>
+            <button class="btn-c" onclick="setAnimMode('fade')">⭐ 5. Desvanecer</button>
+            <button class="btn-c" onclick="setAnimMode('pop')">⭐ 6. Explosión</button>
+            <button class="btn-c" onclick="setAnimMode('drop')">⭐ 7. Caída</button>
+            <button class="btn-c" onclick="setAnimMode('wipe')">⭐ 8. Barrido Arriba</button>
+            <button class="btn-c" onclick="setAnimMode('spinZoom')">⭐ 9. Spin Zoom</button>
+            <button class="btn-c" onclick="setAnimMode('bounce')">⭐ 10. Rebote</button>
+            <button class="btn-c" onclick="setAnimMode('scale')">⭐ 11. Escalado</button>
+            <button class="btn-c" onclick="setAnimMode('windmill')">⭐ 12. Molino</button>
+            <button class="btn-c" onclick="setAnimMode('diagonal')">⭐ 13. Diagonal</button>
+            <button class="btn-c" onclick="setAnimMode('flash')">⭐ 14. Flash</button>
+            <button class="btn-c" onclick="setAnimMode('vBlinds')">⭐ 15. Persiana Vert.</button>
+            <button class="btn-c" onclick="setAnimMode('reveal')">⭐ 16. Revelar</button>
+            <button class="btn-c" onclick="setAnimMode('rise')">⭐ 17. Elevar</button>
+            <button class="btn-c" onclick="setAnimMode('swing')">⭐ 18. Balanceo</button>
+            <button class="btn-c" onclick="setAnimMode('dBlinds')">⭐ 19. Persiana Diag.</button>
             <button class="btn-c" onclick="setAnimMode('none')">⏹️ 20. Estático</button>
         </div>
 
@@ -424,55 +425,67 @@
     let thumbAlign = 'center';
     let isBlurBg = false;
 
-    // MOTOR DE SÍNTESIS DE VOZ IA (SISTEMA DE AUDIO MEJORADO)
+    // MOTOR DE SÍNTESIS DE VOZ IA (SISTEMA DE VOCES REPARADO)
     const synth = window.speechSynthesis;
-    let availableVoices = [];
+    let systemVoices = [];
 
-    function loadSystemVoices() {
+    function populateVoiceList() {
         if (!synth) return;
-        availableVoices = synth.getVoices();
+        systemVoices = synth.getVoices();
         const voiceSelect = document.getElementById('tts-voice');
         voiceSelect.innerHTML = '';
         
-        // Priorizar voces en español
-        let spanishVoices = availableVoices.filter(v => v.lang.includes('es') || v.lang.includes('ES'));
-        let listToUse = spanishVoices.length > 0 ? spanishVoices : availableVoices;
+        if (systemVoices.length === 0) return;
 
-        listToUse.forEach((voice) => {
+        systemVoices.forEach((voice, index) => {
             const option = document.createElement('option');
-            option.textContent = `${voice.name} (${voice.lang})`;
-            option.value = voice.name;
-            if (voice.default || voice.lang.includes('es-MX') || voice.lang.includes('es-ES')) {
-                option.selected = true;
+            option.textContent = `${voice.name} [${voice.lang}]`;
+            option.value = index;
+            if (voice.lang.includes('es') || voice.lang.includes('ES')) {
+                option.style.fontWeight = 'bold';
+                option.style.color = '#00ff00';
             }
             voiceSelect.appendChild(option);
         });
     }
 
-    loadSystemVoices();
+    populateVoiceList();
     if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = loadSystemVoices;
+        speechSynthesis.onvoiceschanged = populateVoiceList;
     }
 
     function speakCurrentText() {
         if (!synth) { alert("Tu navegador no soporta sintetización de voz."); return; }
         
-        // Desbloquear/Reiniciar audio congelado en navegadores
-        synth.cancel();
+        synth.cancel(); // Detener audios congelados
         synth.resume();
 
         const text = slideTextInput.value.trim();
-        if (!text) { alert("Pega un texto en el cuadro superior para que la IA pueda narrarlo."); return; }
+        if (!text) { alert("Ingresa un texto en el cuadro para que la IA lo narre."); return; }
 
         const utterance = new SpeechSynthesisUtterance(text);
-        const selectedVoiceName = document.getElementById('tts-voice').value;
-        const voiceObj = availableVoices.find(v => v.name === selectedVoiceName);
+        const selectedIdx = document.getElementById('tts-voice').value;
         
-        if (voiceObj) utterance.voice = voiceObj;
-        utterance.lang = voiceObj ? voiceObj.lang : 'es-MX';
+        if (systemVoices[selectedIdx]) {
+            utterance.voice = systemVoices[selectedIdx];
+            utterance.lang = systemVoices[selectedIdx].lang;
+        }
+
         utterance.rate = parseFloat(document.getElementById('tts-rate').value);
         utterance.pitch = parseFloat(document.getElementById('tts-pitch').value);
 
+        synth.speak(utterance);
+    }
+
+    function testSelectedVoice() {
+        if (!synth) return;
+        synth.cancel();
+        const selectedIdx = document.getElementById('tts-voice').value;
+        if (!systemVoices[selectedIdx]) return;
+
+        const utterance = new SpeechSynthesisUtterance("Voz seleccionada correctamente.");
+        utterance.voice = systemVoices[selectedIdx];
+        utterance.lang = systemVoices[selectedIdx].lang;
         synth.speak(utterance);
     }
 
@@ -695,6 +708,7 @@
             document.getElementById('status-mic').innerText = "ESTADO: IA LISTA";
             processAIFrames();
             updateProjectHistoryDropdown();
+            setTimeout(populateVoiceList, 1000);
         });
     }
 
@@ -734,7 +748,7 @@
 
     function changeAvatar(val) { selectedAvatar = val; }
 
-    // DIBUJO DE LOS 11 AVATARES ANIMADOS REACTIVOS AL HABLA
+    // AVATARES ANIMADOS REACTIVOS AL HABLA
     function drawAnimatedAvatar(context) {
         drawVirtualBackgroundToCtx(context, 0, 0, procCanvas.width, procCanvas.height);
         const cx = procCanvas.width / 2;
@@ -951,7 +965,7 @@
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
     }
 
-    // ANIMACIONES Y TRANSICIONES ESTILO POWERPOINT
+    // LAS 20 TRANSICIONES Y ANIMACIONES TIPO POWERPOINT TOTALMENTE PROGRAMADAS
     function renderImageWithAnimation(img, animMode) {
         transitionTimer += 0.02;
         let t = Math.min(transitionTimer, 1);
@@ -970,16 +984,25 @@
                 let px = (1 - Math.pow(1 - t, 3)) * cw - cw;
                 ctx.translate(px, 0); drawImageContain(img, cw, ch);
                 break;
+            case 'blinds':
+                let bCols = 8; let wCol = cw / bCols;
+                for(let i=0; i<bCols; i++) {
+                    ctx.save();
+                    ctx.beginPath(); ctx.rect(i*wCol, 0, wCol * t, ch); ctx.clip();
+                    drawImageContain(img, cw, ch);
+                    ctx.restore();
+                }
+                break;
+            case 'flip':
+                ctx.translate(cw / 2, ch / 2); ctx.scale(Math.cos((1-t) * Math.PI / 2), 1); ctx.translate(-cw / 2, -ch / 2);
+                drawImageContain(img, cw, ch);
+                break;
             case 'fade':
                 ctx.globalAlpha = t; drawImageContain(img, cw, ch);
                 break;
             case 'pop':
-                let pScale = t < 0.8 ? t * 1.1 : 1;
+                let pScale = t < 0.8 ? t * 1.15 : 1;
                 ctx.translate(cw / 2, ch / 2); ctx.scale(pScale, pScale); ctx.translate(-cw / 2, -ch / 2);
-                drawImageContain(img, cw, ch);
-                break;
-            case 'flip':
-                ctx.translate(cw / 2, ch / 2); ctx.scale(Math.cos(t * Math.PI), 1); ctx.translate(-cw / 2, -ch / 2);
                 drawImageContain(img, cw, ch);
                 break;
             case 'drop':
@@ -989,6 +1012,58 @@
             case 'wipe':
                 let wipeH = t * ch;
                 ctx.beginPath(); ctx.rect(0, ch - wipeH, cw, wipeH); ctx.clip();
+                drawImageContain(img, cw, ch);
+                break;
+            case 'spinZoom':
+                let angle = (1 - t) * Math.PI * 2;
+                ctx.translate(cw / 2, ch / 2); ctx.rotate(angle); ctx.scale(t, t); ctx.translate(-cw / 2, -ch / 2);
+                drawImageContain(img, cw, ch);
+                break;
+            case 'bounce':
+                let bounceY = Math.abs(Math.sin(t * Math.PI * 2.5)) * (1 - t) * 150;
+                ctx.translate(0, -bounceY); drawImageContain(img, cw, ch);
+                break;
+            case 'scale':
+                ctx.translate(cw / 2, ch / 2); ctx.scale(t, t); ctx.translate(-cw / 2, -ch / 2);
+                drawImageContain(img, cw, ch);
+                break;
+            case 'windmill':
+                ctx.translate(cw / 2, ch / 2); ctx.rotate((1 - t) * Math.PI); ctx.translate(-cw / 2, -ch / 2);
+                drawImageContain(img, cw, ch);
+                break;
+            case 'diagonal':
+                let diagX = (1 - t) * cw; let diagY = (1 - t) * ch;
+                ctx.translate(-diagX, -diagY); drawImageContain(img, cw, ch);
+                break;
+            case 'flash':
+                drawImageContain(img, cw, ch);
+                if (t < 0.3) { ctx.fillStyle = `rgba(255,255,255,${1 - (t/0.3)})`; ctx.fillRect(0,0,cw,ch); }
+                break;
+            case 'vBlinds':
+                let bRows = 6; let hRow = ch / bRows;
+                for(let j=0; j<bRows; j++) {
+                    ctx.save();
+                    ctx.beginPath(); ctx.rect(0, j*hRow, cw, hRow * t); ctx.clip();
+                    drawImageContain(img, cw, ch);
+                    ctx.restore();
+                }
+                break;
+            case 'reveal':
+                ctx.beginPath(); ctx.arc(cw / 2, ch / 2, t * Math.max(cw, ch), 0, Math.PI * 2); ctx.clip();
+                drawImageContain(img, cw, ch);
+                break;
+            case 'rise':
+                let riseY = (1 - t) * ch;
+                ctx.translate(0, riseY); drawImageContain(img, cw, ch);
+                break;
+            case 'swing':
+                let swingRot = Math.sin((1 - t) * Math.PI * 3) * (1 - t) * 0.2;
+                ctx.translate(cw / 2, 0); ctx.rotate(swingRot); ctx.translate(-cw / 2, 0);
+                drawImageContain(img, cw, ch);
+                break;
+            case 'dBlinds':
+                let dW = t * cw;
+                ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(dW, 0); ctx.lineTo(dW - 200, ch); ctx.lineTo(0, ch); ctx.clip();
                 drawImageContain(img, cw, ch);
                 break;
             default:
@@ -1008,8 +1083,6 @@
             } else if (m.type === 'vid') {
                 ctx.drawImage(vBg, 0, 0, canvas.width, canvas.height);
             }
-            
-            // EL TEXTO FUE REMOVIDO DE LAS FOTOS/CÁMARA PARA DEJAR LA IMAGEN LIMPIA
         }
 
         if (camMode !== 'off' && vCam.srcObject) {
