@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>CAPACITIUMX V340 - STUDIO, SEARCH 30 PHOTOS & AI VOICE CONTROL</title>
+    <title>CAPACITIUMX V340 - STUDIO, SEARCH 50 PHOTOS & CONTINUOUS NARRATION</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation"></script>
     <style>
         :root { --neon: #00ff00; --dark: #050505; --red: #ff3333; }
@@ -117,10 +117,10 @@
             <option value="">-- Proyectos Guardados --</option>
         </select>
 
-        <!-- BUSCADOR DE FOTOS AUTOMÁTICO EN LOTE DE 30 -->
-        <div class="section-title">🔍 BUSCADOR DE FOTOS EN LOTE (30 IMÁGENES)</div>
+        <!-- BUSCADOR DE FOTOS AUTOMÁTICO EN LOTE DE 50 -->
+        <div class="section-title">🔍 BUSCADOR DE FOTOS EN LOTE (50 IMÁGENES)</div>
         <input type="text" id="image-search-input" class="input-text" placeholder="Ej. Erling Haaland, Mbappé, Monterrey...">
-        <button id="btn-search-img" class="btn-search" onclick="searchAndAddPhotos()">🔍 BUSCAR E IMPORTAR 30 FOTOS</button>
+        <button id="btn-search-img" class="btn-search" onclick="searchAndAddPhotos()">🔍 BUSCAR E IMPORTAR 50 FOTOS</button>
 
         <button class="btn-load" style="margin-top:8px;" onclick="document.getElementById('file-in').click()">📥 SUBIR FOTOS DESDE TU EQUIPO</button>
         <input type="file" id="file-in" multiple accept="image/*,video/*" style="display:none;" onchange="handleFiles(event)">
@@ -141,7 +141,7 @@
 
         <!-- GUION DE NARRACIÓN Y CONTROL DE VELOCIDAD DE VOZ -->
         <div class="section-title">🌐 GUION DE NARRACIÓN Y VELOCIDAD DE VOZ IA</div>
-        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega tu texto aquí (se traducirá y narrará automáticamente al presionar Grabar)..." oninput="updateCurrentText()"></textarea>
+        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega tu texto aquí (se narrará completo sin interrupciones)..." oninput="updateCurrentText()"></textarea>
         
         <div class="ctrl-row">
             <span>Voz / Idioma IA:</span>
@@ -401,7 +401,7 @@
         <button class="btn-next" onclick="nextSlide()">SIGUIENTE FOTO ➡️</button>
         <button id="dlBtn" style="display:none; background:var(--neon); color:black; font-weight:bold; cursor:pointer; border:none; border-radius:8px; padding:12px 20px;" onclick="download()">📥 GUARDAR VIDEO FINAL</button>
     </div>
-    <div style="color:#aaa; font-size:10px;">AL HACER CLIC EN EL BOTÓN ROJO, SE GRABA, NARRA EN AUTOMÁTICO CON LA VOZ Y PASA LAS FOTOS SOLO.</div>
+    <div style="color:#aaa; font-size:10px;">LAS FOTOS REINICIAN EN BUCLE SI EL TEXTO DE NARRACIÓN ES MÁS LARGO QUE LAS IMÁGENES.</div>
 </div>
 
 <video id="v-cam" autoplay playsinline style="display:none"></video>
@@ -461,7 +461,7 @@
 
     function setTtsRate(rate) {
         document.getElementById('tts-rate').value = rate;
-        document.getElementById('lbl-rate').innerText = rate.toFixed(2) + 'x';
+        document.getElementById('lbl-rate').innerText = parseFloat(rate).toFixed(2) + 'x';
     }
 
     // LISTA DE TRANSICIONES DISPONIBLES PARA ASIGNACIÓN AUTOMÁTICA SIN REPETIR
@@ -471,18 +471,18 @@
         'vBlinds', 'reveal', 'rise', 'swing', 'dBlinds'
     ];
 
-    // BUSCADOR AUTOMÁTICO DE FOTOS (30 IMÁGENES EN LOTE CON TRANSICIONES)
+    // BUSCADOR AUTOMÁTICO DE FOTOS (LOTE AMPLIADO A 50 IMÁGENES)
     async function searchAndAddPhotos() {
         const query = document.getElementById('image-search-input').value.trim();
         if (!query) return alert("Por favor escribe una palabra clave para buscar fotos (ej. Mbappé, Haaland, Monterrey).");
         
         const btn = document.getElementById('btn-search-img');
         const origText = btn.innerText;
-        btn.innerText = "⏳ DESCARGANDO Y APLICANDO EFECTOS A 30 FOTOS...";
+        btn.innerText = "⏳ DESCARGANDO Y APLICANDO EFECTOS A 50 FOTOS...";
         btn.disabled = true;
 
         try {
-            const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=30&gsrnamespace=6&prop=imageinfo&iiprop=url&format=json&origin=*`;
+            const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(query)}&gsrlimit=50&gsrnamespace=6&prop=imageinfo&iiprop=url&format=json&origin=*`;
             const res = await fetch(url);
             const data = await res.json();
             
@@ -584,7 +584,6 @@
 
         const textToSpeak = await translateText(text, langCode);
 
-        // RESPALDO EN LA NUBE CON CONTROL DE VELOCIDAD CORREGIDO
         if (!synth || !voiceObj) {
             let audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(textToSpeak)}&tl=${langCode.split('-')[0]}&client=tw-ob`;
             currentAudioObj = new Audio(audioUrl);
@@ -618,24 +617,27 @@
         if (currentAudioObj) { currentAudioObj.pause(); currentAudioObj = null; }
     }
 
-    // INICIO AUTOMÁTICO DE PRESENTACIÓN Y TRADUCCIÓN/NARRACIÓN
+    // INICIO AUTOMÁTICO DE PRESENTACIÓN Y NARRACIÓN CONTINUA
     function startAutoPresentation() {
         if (library.length === 0) return;
         isAutoRunning = true;
         if (curIdx === -1) selectMedia(0);
+        
+        // Iniciar narración del texto completo al inicio
+        if (slideTextInput.value.trim()) {
+            speakCurrentText();
+        }
+        
         playAutoCycle();
     }
 
     function playAutoCycle() {
         if (!isAutoRunning) return;
 
-        if (slideTextInput.value.trim()) {
-            speakCurrentText();
-        }
-
         let seconds = parseInt(document.getElementById('slide-duration').value) || 4;
         autoTimer = setTimeout(() => {
             if (isAutoRunning) {
+                // Cambiar a la siguiente foto, reiniciando al índice 0 si se acaban (Loop Infinito)
                 nextSlide();
                 playAutoCycle();
             }
@@ -1093,11 +1095,11 @@
     function selectMedia(i) {
         curIdx = i;
         transitionTimer = 0;
-        slideTextInput.value = library[i].text || "";
-        if (library[i].type === 'vid') { vBg.src = library[i].url; vBg.play(); }
+        if (library[i] && library[i].type === 'vid') { vBg.src = library[i].url; vBg.play(); }
         updateList();
     }
 
+    // AVANZAR SLIDE EN BUCLE SIN RECONECTAR LA NARRACIÓN
     function nextSlide() {
         if (library.length > 0) {
             let nextIdx = (curIdx + 1) % library.length;
@@ -1236,9 +1238,9 @@
 
         if (curIdx !== -1) {
             const m = library[curIdx];
-            if (m.type === 'img' && m.el) {
+            if (m && m.type === 'img' && m.el) {
                 renderImageWithAnimation(m.el, m.anim || 'zoom');
-            } else if (m.type === 'vid') {
+            } else if (m && m.type === 'vid') {
                 ctx.drawImage(vBg, 0, 0, canvas.width, canvas.height);
             }
         }
@@ -1300,7 +1302,7 @@
             const destination = audioCtx.createMediaStreamDestination();
             audioCtx.createMediaStreamSource(micStream).connect(destination);
 
-            if (curIdx !== -1 && library[curIdx].type === 'vid') {
+            if (curIdx !== -1 && library[curIdx] && library[curIdx].type === 'vid') {
                 const vidSource = audioCtx.createMediaElementSource(vBg);
                 vidSource.connect(destination);
                 vidSource.connect(audioCtx.destination);
