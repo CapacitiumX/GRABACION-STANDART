@@ -119,12 +119,12 @@
         <button class="btn-load" style="margin-top:8px;" onclick="document.getElementById('file-in').click()">📥 SUBIR FOTOS / VIDEOS</button>
         <input type="file" id="file-in" multiple accept="image/*,video/*" style="display:none;" onchange="handleFiles(event)">
         
-        <!-- NARRACIÓN Y TEXTO A VOZ (NUEVO MÓDULO INTEGRADO) -->
-        <div class="section-title">🗣️ GUION Y NARRADOR IA (TEXTO A VOZ)</div>
-        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega tu texto o guion para esta fotografía aquí..." oninput="updateCurrentText()"></textarea>
+        <!-- GUION DE NARRACIÓN IA (TEXTO SOLO PARA AUDIO, INVISIBLE EN FOTOS) -->
+        <div class="section-title">🗣️ GUION DE NARRACIÓN IA (NO APARECE EN LA FOTO)</div>
+        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega aquí el texto que la IA va a narrar para esta foto..." oninput="updateCurrentText()"></textarea>
         
         <div class="ctrl-row">
-            <span>Voz IA:</span>
+            <span>Seleccionar Voz IA:</span>
             <select id="tts-voice" class="select-custom"></select>
         </div>
         <div class="ctrl-row">
@@ -137,7 +137,7 @@
         </div>
         <div class="grid-buttons" style="margin-top: 4px;">
             <button class="btn-load" style="background:#00ffcc; color:black;" onclick="speakCurrentText()">🎙️ NARRAR FOTO ACTUAL</button>
-            <button class="btn-load" style="background:#ff3333; color:white;" onclick="stopSpeech()">⏹️ DETENER NARRACIÓN</button>
+            <button class="btn-load" style="background:#ff3333; color:white;" onclick="stopSpeech()">⏹️ DETENER VOZ</button>
         </div>
 
         <div id="media-list" style="margin-top: 6px;"></div>
@@ -150,10 +150,10 @@
 
         <div class="section-title">🖼️ ESTUDIO Y GENERADOR DE MINIATURAS</div>
         <button class="btn-load" style="background:#00ffff; color:black; font-weight:900;" onclick="generateAutoThumbnails()">✨ GENERAR 10 OPCIONES AUTO (IA)</button>
-        <input type="text" id="thumb-text" class="input-text" style="margin-top:4px;" placeholder="Tu Texto Personalizado (O déjalo vacío)...">
+        <input type="text" id="thumb-text" class="input-text" style="margin-top:4px;" placeholder="Texto para Miniatura de YouTube...">
         
         <div class="ctrl-row">
-            <span>Color Texto:</span>
+            <span>Color Texto Miniatura:</span>
             <input type="color" id="thumb-color" value="#ffeb3b" style="background:none; border:none; cursor:pointer; width:30px; height:25px;">
             <select id="thumb-font" class="select-custom">
                 <option value="Impact">Impact (Youtuber)</option>
@@ -163,7 +163,7 @@
         </div>
 
         <div class="ctrl-row">
-            <span>Tamaño Letra:</span>
+            <span>Tamaño Letra Miniatura:</span>
             <input type="range" id="thumb-size" min="30" max="140" value="80">
         </div>
 
@@ -313,7 +313,7 @@
             <button class="btn-c" onclick="setCamFx('unrealSet')">🎬 85. Unreal Engine Set</button>
         </div>
 
-        <div class="section-title">🎬 20 TRANSICIONES DE FOTO / SLIDE</div>
+        <div class="section-title">🎬 20 TRANSICIONES TIPO POWERPOINT</div>
         <div class="grid-buttons">
             <button class="btn-c" onclick="setAnimMode('zoom')">🔍 1. Zoom</button>
             <button class="btn-c" onclick="setAnimMode('slide')">↔️ 2. Cortina</button>
@@ -424,46 +424,52 @@
     let thumbAlign = 'center';
     let isBlurBg = false;
 
-    // SINTETIZADOR DE VOZ (SPEECH SYNTHESIS) E INTEGRACIÓN AUDIO
+    // MOTOR DE SÍNTESIS DE VOZ IA (SISTEMA DE AUDIO MEJORADO)
     const synth = window.speechSynthesis;
     let availableVoices = [];
-    let ttsAudioDestination = null;
 
-    function populateVoiceList() {
+    function loadSystemVoices() {
         if (!synth) return;
-        availableVoices = synth.getVoices().filter(voice => voice.lang.includes('es') || voice.lang.includes('ES') || voice.lang.includes('en'));
+        availableVoices = synth.getVoices();
         const voiceSelect = document.getElementById('tts-voice');
         voiceSelect.innerHTML = '';
         
-        availableVoices.forEach((voice, index) => {
+        // Priorizar voces en español
+        let spanishVoices = availableVoices.filter(v => v.lang.includes('es') || v.lang.includes('ES'));
+        let listToUse = spanishVoices.length > 0 ? spanishVoices : availableVoices;
+
+        listToUse.forEach((voice) => {
             const option = document.createElement('option');
             option.textContent = `${voice.name} (${voice.lang})`;
-            option.value = index;
-            if (voice.default || voice.lang.startsWith('es')) {
+            option.value = voice.name;
+            if (voice.default || voice.lang.includes('es-MX') || voice.lang.includes('es-ES')) {
                 option.selected = true;
             }
             voiceSelect.appendChild(option);
         });
     }
 
-    populateVoiceList();
+    loadSystemVoices();
     if (speechSynthesis.onvoiceschanged !== undefined) {
-        speechSynthesis.onvoiceschanged = populateVoiceList;
+        speechSynthesis.onvoiceschanged = loadSystemVoices;
     }
 
     function speakCurrentText() {
-        if (!synth) { alert("Tu navegador no soporta la función de voz."); return; }
-        synth.cancel(); // Detener cualquier audio previo
+        if (!synth) { alert("Tu navegador no soporta sintetización de voz."); return; }
+        
+        // Desbloquear/Reiniciar audio congelado en navegadores
+        synth.cancel();
+        synth.resume();
 
         const text = slideTextInput.value.trim();
-        if (!text) { alert("Ingresa un texto en el cuadro para que la IA lo narre."); return; }
+        if (!text) { alert("Pega un texto en el cuadro superior para que la IA pueda narrarlo."); return; }
 
         const utterance = new SpeechSynthesisUtterance(text);
-        const selectedVoiceIndex = document.getElementById('tts-voice').value;
-        if (availableVoices[selectedVoiceIndex]) {
-            utterance.voice = availableVoices[selectedVoiceIndex];
-        }
-
+        const selectedVoiceName = document.getElementById('tts-voice').value;
+        const voiceObj = availableVoices.find(v => v.name === selectedVoiceName);
+        
+        if (voiceObj) utterance.voice = voiceObj;
+        utterance.lang = voiceObj ? voiceObj.lang : 'es-MX';
         utterance.rate = parseFloat(document.getElementById('tts-rate').value);
         utterance.pitch = parseFloat(document.getElementById('tts-pitch').value);
 
@@ -900,7 +906,7 @@
             d.onclick = () => selectMedia(i);
             
             const label = document.createElement('span');
-            label.innerText = `${i+1}. ${m.type === 'vid' ? '🎥' : '🖼️'} ${m.text.substring(0,10)}...`;
+            label.innerText = `${i+1}. ${m.type === 'vid' ? '🎥' : '🖼️'} Foto ${i+1}`;
             
             const fxTag = document.createElement('span');
             fxTag.className = 'fx-tag';
@@ -945,6 +951,7 @@
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
     }
 
+    // ANIMACIONES Y TRANSICIONES ESTILO POWERPOINT
     function renderImageWithAnimation(img, animMode) {
         transitionTimer += 0.02;
         let t = Math.min(transitionTimer, 1);
@@ -971,6 +978,19 @@
                 ctx.translate(cw / 2, ch / 2); ctx.scale(pScale, pScale); ctx.translate(-cw / 2, -ch / 2);
                 drawImageContain(img, cw, ch);
                 break;
+            case 'flip':
+                ctx.translate(cw / 2, ch / 2); ctx.scale(Math.cos(t * Math.PI), 1); ctx.translate(-cw / 2, -ch / 2);
+                drawImageContain(img, cw, ch);
+                break;
+            case 'drop':
+                let py = (1 - Math.pow(1 - t, 3)) * ch - ch;
+                ctx.translate(0, py); drawImageContain(img, cw, ch);
+                break;
+            case 'wipe':
+                let wipeH = t * ch;
+                ctx.beginPath(); ctx.rect(0, ch - wipeH, cw, wipeH); ctx.clip();
+                drawImageContain(img, cw, ch);
+                break;
             default:
                 drawImageContain(img, cw, ch);
         }
@@ -989,12 +1009,7 @@
                 ctx.drawImage(vBg, 0, 0, canvas.width, canvas.height);
             }
             
-            if(m.text) {
-                ctx.fillStyle = "yellow"; ctx.font = "bold 50px Impact"; ctx.textAlign = "center";
-                ctx.strokeStyle = "black"; ctx.lineWidth = 8;
-                ctx.strokeText(m.text.toUpperCase(), canvas.width/2, 650);
-                ctx.fillText(m.text.toUpperCase(), canvas.width/2, 650);
-            }
+            // EL TEXTO FUE REMOVIDO DE LAS FOTOS/CÁMARA PARA DEJAR LA IMAGEN LIMPIA
         }
 
         if (camMode !== 'off' && vCam.srcObject) {
@@ -1060,7 +1075,6 @@
                 vidSource.connect(audioCtx.destination);
             }
 
-            // Capturar la salida de audio del sistema/IA si está activada
             const combined = new MediaStream([...canvasStream.getVideoTracks(), ...destination.stream.getAudioTracks()]);
             recorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp9' });
             chunks = [];
