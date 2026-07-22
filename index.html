@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>CAPACITIUMX V340 - STUDIO & AUTO TRANSITIONS STUDIO</title>
+    <title>CAPACITIUMX V340 - STUDIO & AUTO PRESENTATION STUDIO</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation"></script>
     <style>
         :root { --neon: #00ff00; --dark: #050505; --red: #ff3333; }
@@ -44,7 +44,6 @@
         .btn-rec { background: var(--red); color: white; padding: 12px 25px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; font-size: 13px; }
         .btn-pause { background: #ff9800; color: black; padding: 12px 20px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; font-size: 13px; }
         .btn-next { background: #333; border: 1px solid var(--neon); color: var(--neon); padding: 12px 20px; font-weight: bold; cursor: border-radius: 8px; font-size: 13px; }
-        .btn-auto { background: #00e5ff; color: black; padding: 12px 20px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; font-size: 13px; }
         
         .input-text { background: #222; color: white; border: 1px solid var(--neon); padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 11px; }
         .ctrl-row { display: flex; align-items: center; gap: 6px; font-size: 10px; color: #ccc; }
@@ -137,7 +136,7 @@
 
         <!-- GUION DE NARRACIÓN IA -->
         <div class="section-title">🌐 GUION DE NARRACIÓN IA (TRADUCTOR MULTILINGÜE)</div>
-        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega tu texto aquí (se traducirá y narrará automáticamente al idioma elegido)..." oninput="updateCurrentText()"></textarea>
+        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega tu texto aquí (se traducirá y narrará automáticamente al presionar Grabar)..." oninput="updateCurrentText()"></textarea>
         
         <div class="ctrl-row">
             <span>Voz / Idioma IA:</span>
@@ -150,10 +149,6 @@
         <div class="ctrl-row">
             <span>Tono de Voz: <b id="lbl-pitch" style="color:var(--neon);">1.0</b></span>
             <input type="range" id="tts-pitch" min="0.5" max="1.5" step="0.1" value="1.0" oninput="document.getElementById('lbl-pitch').innerText = this.value">
-        </div>
-        <div class="grid-buttons" style="margin-top: 4px;">
-            <button id="btn-narrate" class="btn-load" style="background:#00ffcc; color:black;" onclick="speakCurrentText()">🎙️ TRADUCIR Y NARRAR</button>
-            <button class="btn-load" style="background:#ff3333; color:white;" onclick="stopSpeech()">⏹️ DETENER VOZ</button>
         </div>
 
         <div id="media-list" style="margin-top: 6px;"></div>
@@ -384,15 +379,15 @@
     </main>
 </div>
 
-<!-- BARRA INFERIOR DE CONTROLES DE GRABACIÓN Y PRESENTACIÓN -->
+<!-- BARRA INFERIOR DE CONTROLES DE GRABACIÓN Y PRESENTACIÓN AUTOMÁTICA -->
 <div class="footer">
     <div style="display:flex; gap:12px; align-items: center;">
-        <button id="recBtn" class="btn-rec" onclick="startCapture()">🎙️ EMPEZAR GRABACIÓN Y PRESENTACIÓN AUTO</button>
+        <button id="recBtn" class="btn-rec" onclick="startCapture()">🎙️ EMPEZAR GRABACIÓN, NARRACIÓN Y PRESENTACIÓN AUTO</button>
         <button id="pauseBtn" class="btn-pause" onclick="togglePause()">⏸ PAUSAR (CORTAR)</button>
         <button class="btn-next" onclick="nextSlide()">SIGUIENTE FOTO ➡️</button>
         <button id="dlBtn" style="display:none; background:var(--neon); color:black; font-weight:bold; cursor:pointer; border:none; border-radius:8px; padding:12px 20px;" onclick="download()">📥 GUARDAR VIDEO FINAL</button>
     </div>
-    <div style="color:#aaa; font-size:10px;">CADA FOTO SE CARGA AUTOMÁTICAMENTE CON UNA TRANSICIÓN DISTINTA SIN REPETIR.</div>
+    <div style="color:#aaa; font-size:10px;">AL HACER CLIC EN EL BOTÓN ROJO, SE GRABA, NARRA EN AUTOMÁTICO CON LA VOZ Y PASA LAS FOTOS SOLO.</div>
 </div>
 
 <video id="v-cam" autoplay playsinline style="display:none"></video>
@@ -549,6 +544,7 @@
         if (currentAudioObj) { currentAudioObj.pause(); currentAudioObj = null; }
     }
 
+    // INICIO AUTOMÁTICO DE PRESENTACIÓN Y TRADUCCIÓN/NARRACIÓN
     function startAutoPresentation() {
         if (library.length === 0) return;
         isAutoRunning = true;
@@ -559,6 +555,7 @@
     function playAutoCycle() {
         if (!isAutoRunning) return;
 
+        // Se ejecuta la traducción y narración automáticamente en la foto actual
         if (slideTextInput.value.trim()) {
             speakCurrentText();
         }
@@ -966,13 +963,11 @@
         context.restore();
     }
 
-    // CARGA DE FOTOS CON ASIGNACIÓN DE TRANSICIÓN AUTOMÁTICA Y SECUENCIAL SIN REPETIR
+    // CARGA DE FOTOS CON ASIGNACIÓN DE TRANSICIÓN AUTOMÁTICA
     function handleFiles(e) {
         Array.from(e.target.files).forEach(file => {
             const url = URL.createObjectURL(file);
             const isVid = file.type.includes('video');
-            
-            // Asigna automáticamente un efecto diferente a cada foto subida
             const autoAnim = availableAnims[library.length % availableAnims.length];
             
             const item = { type: isVid ? 'vid' : 'img', url, el: null, text: "", anim: autoAnim };
@@ -1251,13 +1246,14 @@
             isRecording = true;
             btn.innerText = "⏹ TERMINAR GRABACIÓN";
             btn.classList.add('recording');
-            document.getElementById('status-mic').innerText = "🔴 GRABANDO Y PRESENTANDO...";
+            document.getElementById('status-mic').innerText = "🔴 GRABANDO, TRADUCIENDO Y NARRANDO...";
 
+            // INICIA AUTOMÁTICAMENTE LA PRESENTACIÓN Y NARRACIÓN
             startAutoPresentation();
         } else {
             recorder.stop();
             isRecording = false;
-            btn.innerText = "🎙️ EMPEZAR GRABACIÓN Y PRESENTACIÓN AUTO";
+            btn.innerText = "🎙️ EMPEZAR GRABACIÓN, NARRACIÓN Y PRESENTACIÓN AUTO";
             btn.classList.remove('recording');
             document.getElementById('status-mic').innerText = "ESTADO: DETENIDO";
 
@@ -1280,7 +1276,7 @@
             isPaused = false;
             startAutoPresentation();
             pBtn.innerText = "⏸ PAUSAR (CORTAR)";
-            document.getElementById('status-mic').innerText = "🔴 GRABANDO Y PRESENTANDO...";
+            document.getElementById('status-mic').innerText = "🔴 GRABANDO, TRADUCIENDO Y NARRANDO...";
         }
     }
 
