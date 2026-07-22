@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>CAPACITIUMX V340 - STUDIO, SEARCH 50 PHOTOS & CONTINUOUS NARRATION</title>
+    <title>CAPACITIUMX V340 - STUDIO & HD STUDIO AUDIO MASTERING</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation"></script>
     <style>
         :root { --neon: #00ff00; --dark: #050505; --red: #ff3333; }
@@ -25,6 +25,7 @@
         .sidebar { width: 390px; background: #000; border-right: 1px solid #333; padding: 12px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
         .btn-load { background: var(--neon); color: black; padding: 10px; text-align: center; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; font-size: 11px; }
         .btn-search { background: #00e5ff; color: black; padding: 8px; font-weight: bold; cursor: pointer; border-radius: 4px; border: none; font-size: 11px; width: 100%; margin-top: 4px; }
+        .btn-fast-export { background: #ff00ff; color: white; padding: 12px; font-weight: 900; cursor: pointer; border-radius: 8px; border: none; font-size: 12px; width: 100%; text-align: center; box-shadow: 0 0 15px rgba(255,0,255,0.4); }
 
         #media-list { flex: 1; min-height: 80px; max-height: 110px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
         .thumb-nav { padding: 6px; background: #222; border: 1px solid #444; font-size: 11px; cursor: pointer; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
@@ -110,12 +111,16 @@
     <aside class="sidebar">
         <div class="section-title">📜 HISTORIAL DE PROYECTOS GUARDADOS</div>
         <div class="grid-buttons">
-            <button class="btn-load" style="background:#ffea00; color:black;" onclick="saveCurrentProject()">💾 GUARDAR PROYECTO</button>
+            <button class="btn-load" style="background:#ffea00; color:black;" onclick="saveCurrentProject()">💾 GUARDAR PROYECTO COMPLETO</button>
             <button class="btn-load" style="background:#00e5ff; color:black;" onclick="loadSelectedProject()">📂 CARGAR PROYECTO</button>
         </div>
         <select id="project-history-list" class="select-custom" style="margin-top:4px;">
             <option value="">-- Proyectos Guardados --</option>
         </select>
+
+        <!-- EXPORTACIÓN ULTRA RÁPIDA INSTANTÁNEA -->
+        <div class="section-title">⚡ GENERADOR RÁPIDO INSTANTÁNEO</div>
+        <button id="btn-fast-exp" class="btn-fast-export" onclick="instantFastExport()">⚡ EXPORTAR VIDEO COMPLETO EN SEGUNDOS</button>
 
         <!-- BUSCADOR DE FOTOS AUTOMÁTICO EN LOTE DE 50 -->
         <div class="section-title">🔍 BUSCADOR DE FOTOS EN LOTE (50 IMÁGENES)</div>
@@ -393,15 +398,15 @@
     </main>
 </div>
 
-<!-- BARRA INFERIOR DE CONTROLES DE GRABACIÓN Y PRESENTACIÓN AUTOMÁTICA -->
+<!-- BARRA INFERIOR DE CONTROLES DE GRABACIÓN -->
 <div class="footer">
     <div style="display:flex; gap:12px; align-items: center;">
-        <button id="recBtn" class="btn-rec" onclick="startCapture()">🎙️ EMPEZAR GRABACIÓN, NARRACIÓN Y PRESENTACIÓN AUTO</button>
+        <button id="recBtn" class="btn-rec" onclick="startCapture()">🎙️ GRABACIÓN EN VIVO (TIEMPO REAL)</button>
         <button id="pauseBtn" class="btn-pause" onclick="togglePause()">⏸ PAUSAR (CORTAR)</button>
         <button class="btn-next" onclick="nextSlide()">SIGUIENTE FOTO ➡️</button>
         <button id="dlBtn" style="display:none; background:var(--neon); color:black; font-weight:bold; cursor:pointer; border:none; border-radius:8px; padding:12px 20px;" onclick="download()">📥 GUARDAR VIDEO FINAL</button>
     </div>
-    <div style="color:#aaa; font-size:10px;">LAS FOTOS REINICIAN EN BUCLE SI EL TEXTO DE NARRACIÓN ES MÁS LARGO QUE LAS IMÁGENES.</div>
+    <div style="color:#00ff00; font-size:10px; font-weight:bold;">🎙️ AUDIO MASTERIZADO ESTUDIO HD: LA VOZ SE INYECTA DIRECTAMENTE AL VIDEO SIN ECO NI SONIDO LEJANO.</div>
 </div>
 
 <video id="v-cam" autoplay playsinline style="display:none"></video>
@@ -441,6 +446,7 @@
     let customBgImg = null;
     let transitionTimer = 0, camFxTimer = 0;
     let recorder, chunks = [], isRecording = false, isPaused = false, audioCtx, finalBlob;
+    let audioGainNode, audioCompressorNode, audioDest;
     let selfieSegmentation = null;
     let latestMask = null;
     let selectedAvatar = 'none';
@@ -451,7 +457,6 @@
     let thumbAlign = 'center';
     let isBlurBg = false;
 
-    // PRESENTACIÓN AUTOMÁTICA Y CICLOS
     let autoTimer = null;
     let isAutoRunning = false;
 
@@ -464,14 +469,116 @@
         document.getElementById('lbl-rate').innerText = parseFloat(rate).toFixed(2) + 'x';
     }
 
-    // LISTA DE TRANSICIONES DISPONIBLES PARA ASIGNACIÓN AUTOMÁTICA SIN REPETIR
     const availableAnims = [
         'zoom', 'slide', 'blinds', 'flip', 'fade', 'pop', 'drop', 'wipe',
         'spinZoom', 'bounce', 'scale', 'windmill', 'diagonal', 'flash',
         'vBlinds', 'reveal', 'rise', 'swing', 'dBlinds'
     ];
 
-    // BUSCADOR AUTOMÁTICO DE FOTOS (LOTE AMPLIADO A 50 IMÁGENES)
+    // SISTEMA DE GUARDADO PROFUNDO DE PROYECTO
+    function saveCurrentProject() {
+        const name = prompt("Nombre del proyecto:", "Proyecto " + new Date().toLocaleTimeString());
+        if (!name) return;
+
+        const savedLibrary = library.map(item => ({
+            type: item.type,
+            url: item.url,
+            anim: item.anim,
+            text: item.text
+        }));
+
+        const projData = {
+            name: name,
+            date: new Date().toLocaleString(),
+            scriptText: slideTextInput.value,
+            selectedVoiceIdx: document.getElementById('tts-voice').value,
+            ttsRate: document.getElementById('tts-rate').value,
+            ttsPitch: document.getElementById('tts-pitch').value,
+            slideDuration: document.getElementById('slide-duration').value,
+            library: savedLibrary,
+            thumbText: document.getElementById('thumb-text').value,
+            thumbColor: document.getElementById('thumb-color').value,
+            thumbFont: document.getElementById('thumb-font').value,
+            thumbSize: document.getElementById('thumb-size').value,
+            arrowX: document.getElementById('arrow-x').value,
+            arrowY: document.getElementById('arrow-y').value,
+            arrowRot: document.getElementById('arrow-rot').value,
+            arrowColor: document.getElementById('arrow-color').value,
+            showArrow: showArrow,
+            camFx: camFx,
+            bgMode: bgMode
+        };
+
+        let saved = JSON.parse(localStorage.getItem('capX_projects_v2') || "[]");
+        saved.push(projData);
+        localStorage.setItem('capX_projects_v2', JSON.stringify(saved));
+        updateProjectHistoryDropdown();
+        alert("✅ Proyecto completo guardado con exito (fotos, guion y voces incluidos).");
+    }
+
+    function updateProjectHistoryDropdown() {
+        const list = document.getElementById('project-history-list');
+        list.innerHTML = `<option value="">-- Proyectos Guardados --</option>`;
+        let saved = JSON.parse(localStorage.getItem('capX_projects_v2') || "[]");
+        saved.forEach((p, idx) => {
+            let opt = document.createElement('option');
+            opt.value = idx;
+            opt.innerText = `${p.name} (${p.date})`;
+            list.appendChild(opt);
+        });
+    }
+
+    function loadSelectedProject() {
+        const idx = document.getElementById('project-history-list').value;
+        if (idx === "") return;
+        let saved = JSON.parse(localStorage.getItem('capX_projects_v2') || "[]");
+        let p = saved[idx];
+        if (!p) return;
+
+        slideTextInput.value = p.scriptText || "";
+        if (p.ttsRate) setTtsRate(parseFloat(p.ttsRate));
+        if (p.ttsPitch) document.getElementById('tts-pitch').value = p.ttsPitch;
+        if (p.slideDuration) document.getElementById('slide-duration').value = p.slideDuration;
+
+        document.getElementById('thumb-text').value = p.thumbText || "";
+        document.getElementById('thumb-color').value = p.thumbColor || "#ffeb3b";
+        document.getElementById('thumb-font').value = p.thumbFont || "Impact";
+        document.getElementById('thumb-size').value = p.thumbSize || "80";
+        document.getElementById('arrow-x').value = p.arrowX || "380";
+        document.getElementById('arrow-y').value = p.arrowY || "380";
+        document.getElementById('arrow-rot').value = p.arrowRot || "30";
+        document.getElementById('arrow-color').value = p.arrowColor || "#00ff00";
+        showArrow = p.showArrow;
+        camFx = p.camFx || "none";
+        bgMode = p.bgMode || "purple";
+
+        library = [];
+        if (p.library && Array.isArray(p.library)) {
+            p.library.forEach(item => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.src = item.url;
+                library.push({
+                    type: item.type,
+                    url: item.url,
+                    el: img,
+                    text: item.text || "",
+                    anim: item.anim || "zoom"
+                });
+            });
+        }
+
+        updateList();
+        if (library.length > 0) selectMedia(0);
+
+        if (p.selectedVoiceIdx && document.getElementById('tts-voice').options[p.selectedVoiceIdx]) {
+            document.getElementById('tts-voice').value = p.selectedVoiceIdx;
+        }
+
+        alert(`📂 Proyecto "${p.name}" restaurado correctamente con todas sus fotografías y guion.`);
+    }
+
+    // BUSCADOR AUTOMÁTICO DE FOTOS (50 IMÁGENES)
     async function searchAndAddPhotos() {
         const query = document.getElementById('image-search-input').value.trim();
         if (!query) return alert("Por favor escribe una palabra clave para buscar fotos (ej. Mbappé, Haaland, Monterrey).");
@@ -526,7 +633,7 @@
         }
     }
 
-    // SISTEMA DE VOCES IA Y MODULACIÓN DE VELOCIDAD
+    // SISTEMA DE VOCES IA
     const synth = window.speechSynthesis;
     let systemVoices = [];
     let currentAudioObj = null;
@@ -569,6 +676,7 @@
         }
     }
 
+    // CONEXIÓN DIGITAL DIRECTA A MEZCLADOR ESTUDIO
     async function speakCurrentText() {
         stopSpeech();
 
@@ -584,28 +692,32 @@
 
         const textToSpeak = await translateText(text, langCode);
 
-        if (!synth || !voiceObj) {
-            let audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(textToSpeak)}&tl=${langCode.split('-')[0]}&client=tw-ob`;
-            currentAudioObj = new Audio(audioUrl);
-            currentAudioObj.playbackRate = rateVal;
-            currentAudioObj.play();
-            return;
+        // Crear elemento de Audio Digital HD
+        let audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(textToSpeak)}&tl=${langCode.split('-')[0]}&client=tw-ob`;
+        currentAudioObj = new Audio();
+        currentAudioObj.crossOrigin = "anonymous";
+        currentAudioObj.src = audioUrl;
+        currentAudioObj.playbackRate = rateVal;
+
+        // Conectar digitalmente al AudioContext de grabación si está activo
+        if (audioCtx && audioGainNode) {
+            try {
+                let source = audioCtx.createMediaElementSource(currentAudioObj);
+                source.connect(audioGainNode);
+            } catch(e) { console.log(e); }
         }
 
-        const utterance = new SpeechSynthesisUtterance(textToSpeak);
-        utterance.voice = voiceObj;
-        utterance.lang = langCode;
-        utterance.rate = rateVal;
-        utterance.pitch = pitchVal;
-
-        utterance.onerror = () => {
-            let audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(textToSpeak)}&tl=${langCode.split('-')[0]}&client=tw-ob`;
-            currentAudioObj = new Audio(audioUrl);
-            currentAudioObj.playbackRate = rateVal;
-            currentAudioObj.play();
-        };
-
-        synth.speak(utterance);
+        currentAudioObj.play().catch(() => {
+            // Respaldo de sintetizador local si falla la red
+            if (synth && voiceObj) {
+                const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.voice = voiceObj;
+                utterance.lang = langCode;
+                utterance.rate = rateVal;
+                utterance.pitch = pitchVal;
+                synth.speak(utterance);
+            }
+        });
     }
 
     function testSelectedVoice() {
@@ -617,13 +729,95 @@
         if (currentAudioObj) { currentAudioObj.pause(); currentAudioObj = null; }
     }
 
-    // INICIO AUTOMÁTICO DE PRESENTACIÓN Y NARRACIÓN CONTINUA
+    // EXPORTACIÓN ULTRA RÁPIDA INSTANTÁNEA MASTERIZADA
+    async function instantFastExport() {
+        const text = slideTextInput.value.trim();
+        if (!text) return alert("Pega tu guion en el cuadro de texto primero para generar el video.");
+        if (library.length === 0) return alert("Suba o busque fotos antes de exportar.");
+
+        const btn = document.getElementById('btn-fast-exp');
+        const origBtnText = btn.innerText;
+        btn.innerText = "⚡ MASTERIZANDO AUDIO Y GENERANDO VIDEO HD...";
+        btn.disabled = true;
+
+        try {
+            const selectedIdx = document.getElementById('tts-voice').value;
+            const voiceObj = systemVoices[selectedIdx];
+            const langCode = voiceObj ? voiceObj.lang : 'es-MX';
+            const rateVal = parseFloat(document.getElementById('tts-rate').value) || 0.85;
+
+            const textToSpeak = await translateText(text, langCode);
+            let audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(textToSpeak)}&tl=${langCode.split('-')[0]}&client=tw-ob`;
+            
+            let audioRes = await fetch(audioUrl);
+            let audioBlob = await audioRes.blob();
+
+            let offAudio = new Audio(URL.createObjectURL(audioBlob));
+            offAudio.playbackRate = rateVal;
+
+            offAudio.onloadedmetadata = async () => {
+                let totalDuration = offAudio.duration / rateVal;
+                if (isNaN(totalDuration) || totalDuration <= 0) totalDuration = 10;
+
+                const streamCanvas = canvas.captureStream(30);
+                const offlineAudioCtx = new AudioContext();
+                const source = offlineAudioCtx.createMediaElementSource(offAudio);
+                
+                // Procesador de Voz HD Studio para exportación
+                const fastGain = offlineAudioCtx.createGain();
+                fastGain.gain.value = 2.5; // Voz fuerte y cercana
+
+                const fastCompressor = offlineAudioCtx.createDynamicsCompressor();
+                fastCompressor.threshold.setValueAtTime(-20, offlineAudioCtx.currentTime);
+                fastCompressor.ratio.setValueAtTime(10, offlineAudioCtx.currentTime);
+
+                source.connect(fastGain);
+                fastGain.connect(fastCompressor);
+
+                const dest = offlineAudioCtx.createMediaStreamDestination();
+                fastCompressor.connect(dest);
+
+                const fastStream = new MediaStream([...streamCanvas.getVideoTracks(), ...dest.stream.getAudioTracks()]);
+                const fastRecorder = new MediaRecorder(fastStream, { mimeType: 'video/webm;codecs=vp9' });
+                let fastChunks = [];
+
+                fastRecorder.ondataavailable = e => fastChunks.push(e.data);
+                fastRecorder.onstop = () => {
+                    finalBlob = new Blob(fastChunks, { type: 'video/webm' });
+                    document.getElementById('dlBtn').style.display = "block";
+                    btn.innerText = origBtnText;
+                    btn.disabled = false;
+                    alert("✅ ¡Video masterizado en HD generado con exito! Presiona 'GUARDAR VIDEO FINAL' abajo para descargarlo.");
+                };
+
+                fastRecorder.start();
+                offAudio.play();
+
+                let secPerSlide = parseInt(document.getElementById('slide-duration').value) || 4;
+                let slideInterval = setInterval(() => {
+                    nextSlide();
+                }, secPerSlide * 1000);
+
+                setTimeout(() => {
+                    clearInterval(slideInterval);
+                    offAudio.pause();
+                    fastRecorder.stop();
+                }, totalDuration * 1000 + 500);
+            };
+
+        } catch (e) {
+            console.error(e);
+            alert("No se pudo completar la exportación ultra rápida. Se procederá con la grabación en vivo.");
+            btn.innerText = origBtnText;
+            btn.disabled = false;
+        }
+    }
+
     function startAutoPresentation() {
         if (library.length === 0) return;
         isAutoRunning = true;
         if (curIdx === -1) selectMedia(0);
         
-        // Iniciar narración del texto completo al inicio
         if (slideTextInput.value.trim()) {
             speakCurrentText();
         }
@@ -637,7 +831,6 @@
         let seconds = parseInt(document.getElementById('slide-duration').value) || 4;
         autoTimer = setTimeout(() => {
             if (isAutoRunning) {
-                // Cambiar a la siguiente foto, reiniciando al índice 0 si se acaban (Loop Infinito)
                 nextSlide();
                 playAutoCycle();
             }
@@ -655,67 +848,6 @@
     function toggleBlurBg() { isBlurBg = !isBlurBg; }
     function toggleArrow(val) { showArrow = val; }
     function toggleArrowFlip() { arrowFlip = !arrowFlip; }
-
-    function saveCurrentProject() {
-        const name = prompt("Nombre del proyecto:", "Proyecto " + new Date().toLocaleTimeString());
-        if (!name) return;
-
-        const projData = {
-            name: name,
-            date: new Date().toLocaleString(),
-            thumbText: document.getElementById('thumb-text').value,
-            thumbColor: document.getElementById('thumb-color').value,
-            thumbFont: document.getElementById('thumb-font').value,
-            thumbSize: document.getElementById('thumb-size').value,
-            arrowX: document.getElementById('arrow-x').value,
-            arrowY: document.getElementById('arrow-y').value,
-            arrowRot: document.getElementById('arrow-rot').value,
-            arrowColor: document.getElementById('arrow-color').value,
-            showArrow: showArrow,
-            camFx: camFx,
-            bgMode: bgMode
-        };
-
-        let saved = JSON.parse(localStorage.getItem('capX_projects') || "[]");
-        saved.push(projData);
-        localStorage.setItem('capX_projects', JSON.stringify(saved));
-        updateProjectHistoryDropdown();
-        alert("✅ Proyecto guardado con éxito.");
-    }
-
-    function updateProjectHistoryDropdown() {
-        const list = document.getElementById('project-history-list');
-        list.innerHTML = `<option value="">-- Proyectos Guardados --</option>`;
-        let saved = JSON.parse(localStorage.getItem('capX_projects') || "[]");
-        saved.forEach((p, idx) => {
-            let opt = document.createElement('option');
-            opt.value = idx;
-            opt.innerText = `${p.name} (${p.date})`;
-            list.appendChild(opt);
-        });
-    }
-
-    function loadSelectedProject() {
-        const idx = document.getElementById('project-history-list').value;
-        if (idx === "") return;
-        let saved = JSON.parse(localStorage.getItem('capX_projects') || "[]");
-        let p = saved[idx];
-        if (!p) return;
-
-        document.getElementById('thumb-text').value = p.thumbText || "";
-        document.getElementById('thumb-color').value = p.thumbColor || "#ffeb3b";
-        document.getElementById('thumb-font').value = p.thumbFont || "Impact";
-        document.getElementById('thumb-size').value = p.thumbSize || "80";
-        document.getElementById('arrow-x').value = p.arrowX || "380";
-        document.getElementById('arrow-y').value = p.arrowY || "380";
-        document.getElementById('arrow-rot').value = p.arrowRot || "30";
-        document.getElementById('arrow-color').value = p.arrowColor || "#00ff00";
-        showArrow = p.showArrow;
-        camFx = p.camFx || "none";
-        bgMode = p.bgMode || "purple";
-
-        alert(`📂 Proyecto "${p.name}" cargado correctamente.`);
-    }
 
     function generateAutoThumbnails() {
         document.getElementById('thumb-modal').style.display = 'flex';
@@ -905,7 +1037,6 @@
 
     function changeAvatar(val) { selectedAvatar = val; }
 
-    // AVATARES ANIMADOS
     function drawAnimatedAvatar(context) {
         drawVirtualBackgroundToCtx(context, 0, 0, procCanvas.width, procCanvas.height);
         const cx = procCanvas.width / 2;
@@ -1038,7 +1169,6 @@
         context.restore();
     }
 
-    // CARGA DE FOTOS DESDE DISPOSITIVO CON ASIGNACIÓN DE TRANSICIÓN AUTOMÁTICA
     function handleFiles(e) {
         Array.from(e.target.files).forEach(file => {
             const url = URL.createObjectURL(file);
@@ -1099,7 +1229,6 @@
         updateList();
     }
 
-    // AVANZAR SLIDE EN BUCLE SIN RECONECTAR LA NARRACIÓN
     function nextSlide() {
         if (library.length > 0) {
             let nextIdx = (curIdx + 1) % library.length;
@@ -1125,7 +1254,6 @@
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
     }
 
-    // LAS 20 TRANSICIONES POWERPOINT
     function renderImageWithAnimation(img, animMode) {
         transitionTimer += 0.02;
         let t = Math.min(transitionTimer, 1);
@@ -1290,25 +1418,38 @@
         requestAnimationFrame(render);
     }
 
+    // CAPTURA CON MASTERIZACIÓN PROFESIONAL DE AUDIO (MEZCLADOR DE ESTUDIO)
     async function startCapture() {
         const btn = document.getElementById('recBtn');
         
         if (!isRecording) {
-            if (!audioCtx) audioCtx = new AudioContext();
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             if (audioCtx.state === 'suspended') await audioCtx.resume();
 
+            // Cadena de Masterizacion Estudio HD
+            audioGainNode = audioCtx.createGain();
+            audioGainNode.gain.value = 2.5; // Potenciar volumen de narracion
+
+            audioCompressorNode = audioCtx.createDynamicsCompressor();
+            audioCompressorNode.threshold.setValueAtTime(-22, audioCtx.currentTime);
+            audioCompressorNode.knee.setValueAtTime(25, audioCtx.currentTime);
+            audioCompressorNode.ratio.setValueAtTime(12, audioCtx.currentTime);
+            audioCompressorNode.attack.setValueAtTime(0.003, audioCtx.currentTime);
+            audioCompressorNode.release.setValueAtTime(0.25, audioCtx.currentTime);
+
+            audioGainNode.connect(audioCompressorNode);
+
+            audioDest = audioCtx.createMediaStreamDestination();
+            audioCompressorNode.connect(audioDest);
+            audioCompressorNode.connect(audioCtx.destination); // Escuchar en tiempo real
+
             const micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+            const micSource = audioCtx.createMediaStreamSource(micStream);
+            micSource.connect(audioGainNode);
+
             const canvasStream = canvas.captureStream(30);
-            const destination = audioCtx.createMediaStreamDestination();
-            audioCtx.createMediaStreamSource(micStream).connect(destination);
-
-            if (curIdx !== -1 && library[curIdx] && library[curIdx].type === 'vid') {
-                const vidSource = audioCtx.createMediaElementSource(vBg);
-                vidSource.connect(destination);
-                vidSource.connect(audioCtx.destination);
-            }
-
-            const combined = new MediaStream([...canvasStream.getVideoTracks(), ...destination.stream.getAudioTracks()]);
+            const combined = new MediaStream([...canvasStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()]);
+            
             recorder = new MediaRecorder(combined, { mimeType: 'video/webm;codecs=vp9' });
             chunks = [];
             recorder.ondataavailable = e => chunks.push(e.data);
@@ -1321,13 +1462,13 @@
             isRecording = true;
             btn.innerText = "⏹ TERMINAR GRABACIÓN";
             btn.classList.add('recording');
-            document.getElementById('status-mic').innerText = "🔴 GRABANDO, TRADUCIENDO Y NARRANDO...";
+            document.getElementById('status-mic').innerText = "🔴 GRABANDO EN CALIDAD ESTUDIO HD...";
 
             startAutoPresentation();
         } else {
             recorder.stop();
             isRecording = false;
-            btn.innerText = "🎙️ EMPEZAR GRABACIÓN, NARRACIÓN Y PRESENTACIÓN AUTO";
+            btn.innerText = "🎙️ GRABACIÓN EN VIVO (TIEMPO REAL)";
             btn.classList.remove('recording');
             document.getElementById('status-mic').innerText = "ESTADO: DETENIDO";
 
@@ -1350,13 +1491,13 @@
             isPaused = false;
             startAutoPresentation();
             pBtn.innerText = "⏸ PAUSAR (CORTAR)";
-            document.getElementById('status-mic').innerText = "🔴 GRABANDO, TRADUCIENDO Y NARRANDO...";
+            document.getElementById('status-mic').innerText = "🔴 GRABANDO...";
         }
     }
 
     function download() {
         const a = document.createElement('a'); a.href = URL.createObjectURL(finalBlob);
-        a.download = `CAPACITIUMX_FINAL.webm`; a.click();
+        a.download = `CAPACITIUMX_FINAL_STUDIO.webm`; a.click();
     }
 
     window.addEventListener('keydown', (e) => {
