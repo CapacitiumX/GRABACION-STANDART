@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>CAPACITIUMX V340 - STUDIO & AUTOMATIC PRESENTATION STUDIO</title>
+    <title>CAPACITIUMX V340 - STUDIO & AUTO TRANSITIONS STUDIO</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation"></script>
     <style>
         :root { --neon: #00ff00; --dark: #050505; --red: #ff3333; }
@@ -43,7 +43,7 @@
         .footer { height: 110px; background: #111; border-top: 2px solid #333; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
         .btn-rec { background: var(--red); color: white; padding: 12px 25px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; font-size: 13px; }
         .btn-pause { background: #ff9800; color: black; padding: 12px 20px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; font-size: 13px; }
-        .btn-next { background: #333; border: 1px solid var(--neon); color: var(--neon); padding: 12px 20px; font-weight: bold; cursor: pointer; border-radius: 8px; font-size: 13px; }
+        .btn-next { background: #333; border: 1px solid var(--neon); color: var(--neon); padding: 12px 20px; font-weight: bold; cursor: border-radius: 8px; font-size: 13px; }
         .btn-auto { background: #00e5ff; color: black; padding: 12px 20px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; font-size: 13px; }
         
         .input-text { background: #222; color: white; border: 1px solid var(--neon); padding: 8px; border-radius: 4px; width: 100%; box-sizing: border-box; font-size: 11px; }
@@ -118,7 +118,7 @@
             <option value="">-- Proyectos Guardados --</option>
         </select>
 
-        <button class="btn-load" style="margin-top:8px;" onclick="document.getElementById('file-in').click()">📥 SUBIR FOTOS / VIDEOS</button>
+        <button class="btn-load" style="margin-top:8px;" onclick="document.getElementById('file-in').click()">📥 SUBIR FOTOS / VIDEOS (AUTO-TRANSICIÓN)</button>
         <input type="file" id="file-in" multiple accept="image/*,video/*" style="display:none;" onchange="handleFiles(event)">
         
         <!-- CICLOS RÁPIDOS DE CAMBIO DE FOTOGRAFÍA -->
@@ -392,7 +392,7 @@
         <button class="btn-next" onclick="nextSlide()">SIGUIENTE FOTO ➡️</button>
         <button id="dlBtn" style="display:none; background:var(--neon); color:black; font-weight:bold; cursor:pointer; border:none; border-radius:8px; padding:12px 20px;" onclick="download()">📥 GUARDAR VIDEO FINAL</button>
     </div>
-    <div style="color:#aaa; font-size:10px;">AL HACER CLIC EN 'EMPEZAR GRABACIÓN', SE INICIA AUTOMÁTICAMENTE EL CAMBIO Y NARRACIÓN DE LAS FOTOS.</div>
+    <div style="color:#aaa; font-size:10px;">CADA FOTO SE CARGA AUTOMÁTICAMENTE CON UNA TRANSICIÓN DISTINTA SIN REPETIR.</div>
 </div>
 
 <video id="v-cam" autoplay playsinline style="display:none"></video>
@@ -449,6 +449,13 @@
     function setSlideDuration(sec) {
         document.getElementById('slide-duration').value = sec;
     }
+
+    // LISTA DE TRANSICIONES DISPONIBLES PARA ASIGNACIÓN AUTOMÁTICA SIN REPETIR
+    const availableAnims = [
+        'zoom', 'slide', 'blinds', 'flip', 'fade', 'pop', 'drop', 'wipe',
+        'spinZoom', 'bounce', 'scale', 'windmill', 'diagonal', 'flash',
+        'vBlinds', 'reveal', 'rise', 'swing', 'dBlinds'
+    ];
 
     // SISTEMA DE VOCES IA Y MODULACIÓN DE VELOCIDAD
     const synth = window.speechSynthesis;
@@ -508,7 +515,7 @@
 
         const textToSpeak = await translateText(text, langCode);
 
-        // RESPALDO EN LA NUBE CON CONTROL DE VELOCIDAD CORREGIDO
+        // RESPALDO EN LA NUBE CON CONTROL DE VELOCIDAD
         if (!synth || !voiceObj) {
             let audioUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(textToSpeak)}&tl=${langCode.split('-')[0]}&client=tw-ob`;
             currentAudioObj = new Audio(audioUrl);
@@ -552,7 +559,6 @@
     function playAutoCycle() {
         if (!isAutoRunning) return;
 
-        // Narrar guion si la foto actual lo contiene
         if (slideTextInput.value.trim()) {
             speakCurrentText();
         }
@@ -960,11 +966,16 @@
         context.restore();
     }
 
+    // CARGA DE FOTOS CON ASIGNACIÓN DE TRANSICIÓN AUTOMÁTICA Y SECUENCIAL SIN REPETIR
     function handleFiles(e) {
         Array.from(e.target.files).forEach(file => {
             const url = URL.createObjectURL(file);
             const isVid = file.type.includes('video');
-            const item = { type: isVid ? 'vid' : 'img', url, el: null, text: "", anim: 'zoom' };
+            
+            // Asigna automáticamente un efecto diferente a cada foto subida
+            const autoAnim = availableAnims[library.length % availableAnims.length];
+            
+            const item = { type: isVid ? 'vid' : 'img', url, el: null, text: "", anim: autoAnim };
             if (!isVid) { const img = new Image(); img.src = url; item.el = img; }
             library.push(item);
             updateList();
@@ -1242,7 +1253,6 @@
             btn.classList.add('recording');
             document.getElementById('status-mic').innerText = "🔴 GRABANDO Y PRESENTANDO...";
 
-            // INICIO AUTOMÁTICO DE LA PRESENTACIÓN Y NARRACIÓN AL GRABAR
             startAutoPresentation();
         } else {
             recorder.stop();
@@ -1251,7 +1261,6 @@
             btn.classList.remove('recording');
             document.getElementById('status-mic').innerText = "ESTADO: DETENIDO";
 
-            // DETENER PRESENTACIÓN AUTOMÁTICA
             stopAutoPresentation();
         }
     }
