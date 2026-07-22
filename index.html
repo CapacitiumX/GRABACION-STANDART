@@ -119,12 +119,12 @@
         <button class="btn-load" style="margin-top:8px;" onclick="document.getElementById('file-in').click()">📥 SUBIR FOTOS / VIDEOS</button>
         <input type="file" id="file-in" multiple accept="image/*,video/*" style="display:none;" onchange="handleFiles(event)">
         
-        <!-- GUION DE NARRACIÓN IA (CORREGIDO PARA SELECCIONAR TODAS LAS VOCES REALES) -->
-        <div class="section-title">🗣️ GUION DE NARRACIÓN IA (AUDITIVO SOLAMENTE)</div>
-        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega aquí el texto de narración para esta foto..." oninput="updateCurrentText()"></textarea>
+        <!-- GUION DE NARRACIÓN CON TRADUCCIÓN AUTOMÁTICA MULTILINGÜE -->
+        <div class="section-title">🌐 GUION DE NARRACIÓN IA (TRADUCTOR AUTOMÁTICO)</div>
+        <textarea id="slide-text" class="input-text" rows="3" placeholder="Pega tu texto en español aquí (se traducirá automáticamente al idioma de la voz seleccionada)..." oninput="updateCurrentText()"></textarea>
         
         <div class="ctrl-row">
-            <span>Voz IA:</span>
+            <span>Voz / Idioma IA:</span>
             <select id="tts-voice" class="select-custom" onchange="testSelectedVoice()"></select>
         </div>
         <div class="ctrl-row">
@@ -136,7 +136,7 @@
             <input type="range" id="tts-pitch" min="0.5" max="1.5" step="0.1" value="1">
         </div>
         <div class="grid-buttons" style="margin-top: 4px;">
-            <button class="btn-load" style="background:#00ffcc; color:black;" onclick="speakCurrentText()">🎙️ NARRAR FOTO ACTUAL</button>
+            <button id="btn-narrate" class="btn-load" style="background:#00ffcc; color:black;" onclick="speakCurrentText()">🎙️ TRADUCIR Y NARRAR</button>
             <button class="btn-load" style="background:#ff3333; color:white;" onclick="stopSpeech()">⏹️ DETENER VOZ</button>
         </div>
 
@@ -425,7 +425,7 @@
     let thumbAlign = 'center';
     let isBlurBg = false;
 
-    // MOTOR DE SÍNTESIS DE VOZ IA (SISTEMA DE VOCES REPARADO)
+    // SISTEMA DE VOCES IA CON TRADUCCIÓN AUTOMÁTICA
     const synth = window.speechSynthesis;
     let systemVoices = [];
 
@@ -441,10 +441,6 @@
             const option = document.createElement('option');
             option.textContent = `${voice.name} [${voice.lang}]`;
             option.value = index;
-            if (voice.lang.includes('es') || voice.lang.includes('ES')) {
-                option.style.fontWeight = 'bold';
-                option.style.color = '#00ff00';
-            }
             voiceSelect.appendChild(option);
         });
     }
@@ -454,25 +450,59 @@
         speechSynthesis.onvoiceschanged = populateVoiceList;
     }
 
-    function speakCurrentText() {
+    // FUNCIÓN DE TRADUCCIÓN AUTOMÁTICA EN TIEMPO REAL
+    async function translateText(text, targetLangCode) {
+        let lang = targetLangCode.split('-')[0].split('_')[0].toLowerCase();
+        if (lang === 'es') return text; // Si la voz es en español, no se traduce
+
+        try {
+            const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${lang}&dt=t&q=${encodeURIComponent(text)}`);
+            const data = await res.json();
+            let translated = "";
+            if (data && data[0]) {
+                data[0].forEach(item => { if(item[0]) translated += item[0]; });
+            }
+            return translated || text;
+        } catch(e) {
+            console.warn("No se pudo conectar al traductor, usando texto original:", e);
+            return text;
+        }
+    }
+
+    async function speakCurrentText() {
         if (!synth) { alert("Tu navegador no soporta sintetización de voz."); return; }
         
-        synth.cancel(); // Detener audios congelados
+        synth.cancel();
         synth.resume();
 
         const text = slideTextInput.value.trim();
         if (!text) { alert("Ingresa un texto en el cuadro para que la IA lo narre."); return; }
 
-        const utterance = new SpeechSynthesisUtterance(text);
         const selectedIdx = document.getElementById('tts-voice').value;
-        
-        if (systemVoices[selectedIdx]) {
-            utterance.voice = systemVoices[selectedIdx];
-            utterance.lang = systemVoices[selectedIdx].lang;
-        }
+        const voiceObj = systemVoices[selectedIdx];
+        if (!voiceObj) { alert("Selecciona una voz válida de la lista."); return; }
 
+        const btn = document.getElementById('btn-narrate');
+        const origText = btn.innerText;
+        btn.innerText = "⏳ TRADUCIENDO E INICIANDO...";
+        btn.disabled = true;
+
+        // Traducir el texto al idioma de la voz seleccionada
+        const textToSpeak = await translateText(text, voiceObj.lang);
+
+        btn.innerText = origText;
+        btn.disabled = false;
+
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.voice = voiceObj;
+        utterance.lang = voiceObj.lang;
         utterance.rate = parseFloat(document.getElementById('tts-rate').value);
         utterance.pitch = parseFloat(document.getElementById('tts-pitch').value);
+
+        utterance.onerror = (e) => {
+            console.error("Error en reproductor de voz:", e);
+            synth.cancel();
+        };
 
         synth.speak(utterance);
     }
@@ -481,12 +511,16 @@
         if (!synth) return;
         synth.cancel();
         const selectedIdx = document.getElementById('tts-voice').value;
-        if (!systemVoices[selectedIdx]) return;
+        const voiceObj = systemVoices[selectedIdx];
+        if (!voiceObj) return;
 
-        const utterance = new SpeechSynthesisUtterance("Voz seleccionada correctamente.");
-        utterance.voice = systemVoices[selectedIdx];
-        utterance.lang = systemVoices[selectedIdx].lang;
-        synth.speak(utterance);
+        let testMessage = "Voz lista para usar.";
+        translateText("Voz de prueba activada correctamente.", voiceObj.lang).then(translated => {
+            const utterance = new SpeechSynthesisUtterance(translated);
+            utterance.voice = voiceObj;
+            utterance.lang = voiceObj.lang;
+            synth.speak(utterance);
+        });
     }
 
     function stopSpeech() {
@@ -708,7 +742,7 @@
             document.getElementById('status-mic').innerText = "ESTADO: IA LISTA";
             processAIFrames();
             updateProjectHistoryDropdown();
-            setTimeout(populateVoiceList, 1000);
+            setTimeout(populateVoiceList, 800);
         });
     }
 
@@ -965,7 +999,7 @@
         ctx.drawImage(img, drawX, drawY, drawW, drawH);
     }
 
-    // LAS 20 TRANSICIONES Y ANIMACIONES TIPO POWERPOINT TOTALMENTE PROGRAMADAS
+    // LAS 20 TRANSICIONES Y ANIMACIONES TIPO POWERPOINT
     function renderImageWithAnimation(img, animMode) {
         transitionTimer += 0.02;
         let t = Math.min(transitionTimer, 1);
